@@ -10,15 +10,17 @@ import socket
 import fcntl
 import struct
 import platform
+import urllib2
 
-installdir = '/opt/iprobe'
-ccdkdir = '/opt/ccdk'
-SNMP_GET_IPADDR = '127.0.0.1'
+installdir = '/opt/iprobe/'
+ccdkdir = '/opt/ccdk/'
+SNMP_GET_IPADDR = '192.168.10.21'
+post_url = 'http://192.168.10.22:8888/post_receive.php'
 
 port_string = '192.168.10.10:22,192.168.10.87:80'
 
 OS_INFO = '1.3.6.1.2.1.1.1'
-MEM_SIZE = '1.3.6.1.2.1.25.2.2.0'
+MEM_SIZE = '1.3.6.1.2.1.25.2.2.1000'
 MEM_FREE = '1.3.6.1.4.1.2021.4.6.0'
 SWAP_SIZE = '1.3.6.1.4.1.2021.4.3.0'
 SWAP_FREE = '1.3.6.1.4.1.2021.4.4.0'
@@ -38,6 +40,15 @@ def check_os():
     osname = platform.dist()  #tuple
     return osname[0] + osname[1]
 
+def  get_install_dir():
+    plat = check_platform()
+    if 'Windows' in  plat:
+        installdir = 'C:\\iprobe\\'
+        ccdkdir = 'C:\\ccdk\\'
+    if  'Linux'  in  plat:
+        installdir = '/opt/iprobe/'
+        ccdkdir = '/opt/ccdk/'
+
 
 def get_time():
     return int(time.time())
@@ -55,11 +66,11 @@ def Execute(cmd,close_fds=True):
 def walk_snmp_info(ipaddr, mib):
     cmd = 'snmpwalk -v 2c -c public ' + ipaddr + ' ' + mib
     info = Execute(cmd)
-    if "Timeout" in info:
+    if '' == info:
         print "connect %s Timeout" %ipaddr
         return None
-    if "Unknown Object" in info:
-        print "mib Unknown" %mib
+    if 'Unknown Object' in info or 'No Such' in info:
+        print "mib Unknown %s" %mib
         return None
     return info
     
@@ -74,9 +85,28 @@ def get_snmp_info(ipaddr, mib):
         return None
     return info
     
+def PostData(url, data, timeout=60):
+    try:
+        time_start = int(time.time())
+        request = urllib2.Request(url, data, {'Content-Type': 'application/octet-stream'})
+        response = urllib2.urlopen(request,timeout=timeout)
+        time_end = int(time.time())
+        #print "HTTP post response: ", response.read()
+        if response.getcode() != 200:
+            print "Post json failed"
+        if time_end - time_start > 25: 
+            print "timeout on posting"
+        return response.getcode() == 200 
+    except Exception, e:
+        return False
 
 
-################################## HARDWARE ###########################################
+def post(url, post_data):
+#    jdata = str(post_data).replace('\'','"')
+    PostData(url, post_data)
+
+
+#********************************* HARDWARE ***********************************
 # return arr: capacity (M) 
 # [total_mem, free_mem, used_percent,  swap_total, swap_free]
 def get_memory(ip=SNMP_GET_IPADDR):
@@ -86,7 +116,7 @@ def get_memory(ip=SNMP_GET_IPADDR):
         total_mem_k = total_mem_info.split('=')[1].split(':')[1].strip().split()[0].strip()
         total_mem = str(int(total_mem_k)/1024)
     else:
-        total_mem = None
+        total_mem = ''
     mem_arr.append(total_mem)
 
     free_mem_info = walk_snmp_info(ip,MEM_FREE)
@@ -94,21 +124,21 @@ def get_memory(ip=SNMP_GET_IPADDR):
         free_mem_k = free_mem_info.split('=')[1].split(':')[1].strip().split()[0].strip()
         free_mem = str(int(free_mem_k)/1024)    
     else:
-        free_mem = None
+        free_mem = ''
     mem_arr.append(free_mem)
 
-    if total_mem is not None  and free_mem is not None:
+    if total_mem is not ''  and free_mem is not '':
         mem_percent = str(round(float(free_mem)/float(total_mem)*100,2))+'%'
         mem_arr.append(mem_percent)
     else:
-        mem_arr.append("")
+        mem_arr.append('')
     
     total_swap_info = walk_snmp_info(ip,SWAP_SIZE)
     if total_swap_info is not None:
         total_swap_k = total_swap_info.split('=')[1].split(':')[1].strip().split()[0].strip()
         total_swap = str(int(total_swap_k)/1024)
     else:
-        total_swap = None
+        total_swap = ''
     mem_arr.append(total_swap)
 
     free_swap_info = walk_snmp_info(ip,SWAP_FREE)
@@ -116,7 +146,7 @@ def get_memory(ip=SNMP_GET_IPADDR):
         free_swap_k = free_swap_info.split('=')[1].split(':')[1].strip().split()[0].strip()
         free_swap = str(int(free_swap_k)/1024)
     else:
-        free_swap = None
+        free_swap = ''
     mem_arr.append(free_swap)
 
     return mem_arr
@@ -130,9 +160,9 @@ DISK_PERCENT='1.3.6.1.4.1.2021.9.1.9'
 DISK_TOTAL_SIZE = '1.3.6.1.4.1.2021.9.1.6'
 
 def func_disk_base_info(ip=SNMP_GET_IPADDR, mib=DISK_MOUNT,  arr=[]):
-    info_disk_mount = walk_snmp_info(ip, mib).strip()  #string
+    info_disk_mount = walk_snmp_info(ip, mib)
     if info_disk_mount is not None:
-        arr_disk_mount = info_disk_mount.split('\n')
+        arr_disk_mount = info_disk_mount.strip().split('\n')
         for ele in arr_disk_mount:
             arr.append(ele.split('=')[1].split(':')[1].strip())
     return arr
@@ -174,7 +204,7 @@ def func_cpu_info(ip=SNMP_GET_IPADDR, mib=USER_CPU_PERCENT):
     if user_cpu_info is not None:
         user_cpu_percent  = user_cpu_info.split('=')[1].split(':')[1].strip() + '%'
     else:
-        user_cpu_percent = None
+        user_cpu_percent = ''
     return user_cpu_percent
 
 #return array:
@@ -185,14 +215,15 @@ def get_cpu(ip=SNMP_GET_IPADDR):
     cpu_arr.append(user_cpu_percent)
     sys_cpu_percent = func_cpu_info(ip, SYS_CPU_PERCENT)
     cpu_arr.append(sys_cpu_percent)
-    cpu_cores()
     cpu_desc = get_cpu_desc()
-    if cpu_desc is not None:
+    if cpu_desc is not '':
         cpu_base = cpu_desc + " with " + cpu_cores() + " cores"
         cpu_arr.append(cpu_base)
+    else:
+        cpu_arr.append('')
     return cpu_arr
    
-#########################################SYSTEM###############################################################
+#******************************************SYSTEM***********************************************
 NIC_DESC = '1.3.6.1.2.1.2.2.1.2'
 OUT_BKTS = '1.3.6.1.2.1.2.2.1.16'
 OUT_PKTS = '1.3.6.1.2.1.2.2.1.17'
@@ -255,12 +286,9 @@ def get_kernel_release(ip=SNMP_GET_IPADDR, mib=OS_INFO):
 
 def check_port(host, port):
     try:
-        print "cc"
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     except Exception:
-        print "aabb"
         return "False"
-    print "dd"
     s.settimeout(10)
     try:
         s.connect((host, port))
@@ -272,7 +300,33 @@ def check_port(host, port):
     return "Ok"
 
 
+#************************************SOFTWARE*********************************
+def get_iprobe_version():
+    fiprobe = installdir + 'VERSION'
+    print fiprobe
+    with open(fiprobe, 'r') as f:
+        for line in f.readlines():
+            if 'Revision' in line:
+                return line.strip().split(':')[1].strip()
 
+def get_ccdk_version():
+    fccdk = ccdkdir + 'VERSION'
+    with open(fccdk, 'r') as f:
+        for line in f.readlines():
+            if 'Revision' in line:
+                return line.strip().split(':')[1].strip()
+
+
+#return list
+def get_saas_conf():
+    fconf = installdir + 'kafka.conf'
+    with open(fconf, 'r') as f:
+        return f.readlines()
+
+def get_monit_status():
+    proc = subprocess.Popen(monit_comm, shell=True, stdout=subprocess.PIPE)
+    #print proc.communicate()
+    return proc.communicate()[0]
 
 if __name__ == '__main__':
 ##################################HARDWARE###############################
@@ -297,7 +351,7 @@ if __name__ == '__main__':
             disk_ind.append(elem)
 
     for ind in disk_ind:
-       one_json_disk = '\"' + arr_mount[ind] + '\" : { \"device\":\" '  + arr_device[ind] + '\" , \"total_size\": \"' + arr_total_size[ind] + '\", \"used_percent\": \"' +arr_used_percent[ind] + '%\"}' 
+       one_json_disk = '\"' + arr_mount[ind] + '\" : { \"device\":\" '  + arr_device[ind] + '\" , \"total_size\": \"' + str(int(arr_total_size[ind])/1024) + '\", \"used_percent\": \"' +arr_used_percent[ind] + '%\"}' 
        disk_json_arr.append(one_json_disk) 
 
     string_memory = '\"memory\":{ \"total_ram\":\"' +  arr_mem[0] + '\",\"free_ram\":\"' + arr_mem[1] + '\",\"use_percent\":\"' +  arr_mem[2] + '\",\"total_swap\":\"' +  arr_mem[3] + '\",\"free_swap\":\"' +  arr_mem[4] + '\"},'
@@ -325,11 +379,12 @@ if __name__ == '__main__':
     bkts_in_arr,bkts_out_arr,pkts_in_arr,pkts_out_arr =  get_in_out_flows()
     
     for line in ip_addr_arr:
-        if line is not None  and  line !=  "127.0.0.1":
+        if line is not None  and  line !=  "127.0.0.1":    #filter lo and  Null
             ind = ip_addr_arr.index(line)
-            one_json_nic = '\"'  + line + '\":{\" inbkts\":\"' + bkts_in_arr[ind] + '\", \"outbkts\":\"' + bkts_out_arr[ind] + '\",\"inpkts\":\"' + pkts_in_arr[ind] + '\",\"out_pkts\":\"' + pkts_out_arr[ind] + '\"}'
+            one_json_nic = '\"'  + line + '\":{\" inbkts\":\"' + bkts_in_arr[ind] + '\", \"outbkts\":\"' + bkts_out_arr[ind] + '\",\"inpkts\":\"' + pkts_in_arr[ind] + '\",\"outpkts\":\"' + pkts_out_arr[ind] + '\"}'
             nic_json.append(one_json_nic)
 
+    string_time = '\"time\":\"' + str(int(time.time())) + '\",'
     string_port = '\"port\":{' + ','.join(port_json) + '},'
     string_nic = '\"netflow\":{ ' + ( ','.join(nic_json)) + '},'
 
@@ -338,7 +393,40 @@ if __name__ == '__main__':
     
     print string_version
 
+################################################## SOFTWARE ########################################################
+    post_ip=""
+    post_port=""
+    guid=""
+    peerhost=""
+    monit_ip=""
+    broker_list=""
+    get_install_dir()
+    iprobe_version = get_iprobe_version()
+    ccdk_version = get_ccdk_version()
 
-  #  post_data = '{ \"hardware\":{' + string_memory + string_cpu + string_disk + '}}'
-    post_data = '{ \"hardware\":{' + string_memory + string_cpu + string_disk + '},' + '\"system\":{' + string_port + string_nic + string_version + '}}'
+    arr_conf = get_saas_conf()
+    for line in arr_conf:
+        if 'post_server_ip' in line:
+            post_ip = line.split('=')[1].strip()
+        if 'post_server_port' in line:
+            post_port = line.split('=')[1].strip()
+        if 'guid' in line:
+            guid = line.split('=')[1].strip()
+        if 'peerhost' in line:
+            peerhost = line.split('=')[1].strip()
+        if 'metadata.broker.list' in line:
+            broker_list = line.split('=')[1].strip()
+        if 'monit_ip' in line:
+            monit_ip = line.split('=')[1].strip()
+   
+    monit_comm = installdir + 'monit -c ' + installdir + 'monitrc status'
+    monit_status = Execute(monit_comm).replace('\r','').replace('\n', r'\n')
+
+    string_soft = '\"iprobe_version\":\"' + iprobe_version + '\",\"ccdk_version\":\"' + ccdk_version +  '\",\"monit_ip\":\"' + monit_ip  + '\",\"monit_status\":\"' + monit_status + '\",\"saas_conf\":{ \"broker\":\"' + broker_list + '\",\"post_ip\":\"' + post_ip + '\",\"post_port\":\"' + post_port +  '\",\"guid\":\"' + guid + '\",\"peerhost\":\"' + peerhost + '\"}'
+
+
+
+    post_data = '{ \"hardware\":{' + string_memory + string_cpu + string_disk + '},' + '\"system\":{' + string_time +  string_port + string_nic + string_version + '},' + '\"software\":{' + string_soft + ' }}'
     print post_data 
+
+    post(post_url , post_data)
