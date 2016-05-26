@@ -5,22 +5,22 @@ import time
 import os
 import re
 import subprocess
-import psutil
+#import psutil
 import socket
 import fcntl
 import struct
 import platform
 import urllib2
 
-installdir = '/opt/iprobe/'
-ccdkdir = '/opt/ccdk/'
+installdir = ''
+ccdkdir = ''
 SNMP_GET_IPADDR = '192.168.10.21'
 post_url = 'http://192.168.10.22:8888/post_receive.php'
 
 port_string = '192.168.10.10:22,192.168.10.87:80'
 
 OS_INFO = '1.3.6.1.2.1.1.1'
-MEM_SIZE = '1.3.6.1.2.1.25.2.2.1000'
+MEM_SIZE = '1.3.6.1.2.1.25.2.2.0'
 MEM_FREE = '1.3.6.1.4.1.2021.4.6.0'
 SWAP_SIZE = '1.3.6.1.4.1.2021.4.3.0'
 SWAP_FREE = '1.3.6.1.4.1.2021.4.4.0'
@@ -41,6 +41,8 @@ def check_os():
     return osname[0] + osname[1]
 
 def  get_install_dir():
+    global installdir
+    global ccdkdir
     plat = check_platform()
     if 'Windows' in  plat:
         installdir = 'C:\\iprobe\\'
@@ -239,7 +241,7 @@ def get_ip_address(ifname):
             struct.pack('256s', ifname[:15])
             )[20:24])
     except IOError,e:
-	    pass
+        pass
 
 def get_nic_to_ip():
 #    nic_arr=[]
@@ -303,7 +305,7 @@ def check_port(host, port):
 #************************************SOFTWARE*********************************
 def get_iprobe_version():
     fiprobe = installdir + 'VERSION'
-    print fiprobe
+    #print fiprobe
     with open(fiprobe, 'r') as f:
         for line in f.readlines():
             if 'Revision' in line:
@@ -330,103 +332,105 @@ def get_monit_status():
 
 if __name__ == '__main__':
 ##################################HARDWARE###############################
-    disk_ind=[]
-    disk_json_arr=[]
-    repeat_flag=0
+    while True:
+        disk_ind=[]
+        disk_json_arr=[]
+        repeat_flag=0
 
-    arr_mem = get_memory()
-    arr_cpu = get_cpu()
-    arr_mount,arr_device,arr_total_size,arr_used_percent = get_disk()
+        arr_mem = get_memory()
+        arr_cpu = get_cpu()
+        arr_mount,arr_device,arr_total_size,arr_used_percent = get_disk()
 
-	#add not repeat indict to disk_ind
-    for elem in range(len(arr_mount)):
-        if elem > 0:
-            for i in range(elem):
-                if arr_mount[elem] == arr_mount[i]:
-                    repeat_flag=1
-            if repeat_flag == 0:
+	    #add not repeat indict to disk_ind
+        for elem in range(len(arr_mount)):
+            if elem > 0:
+                for i in range(elem):
+                    if arr_mount[elem] == arr_mount[i]:
+                        repeat_flag=1
+                if repeat_flag == 0:
+                    disk_ind.append(elem)
+                repeat_flag = 0  #reset flags
+            else:
                 disk_ind.append(elem)
-            repeat_flag = 0  #reset flags
-        else:
-            disk_ind.append(elem)
 
-    for ind in disk_ind:
-       one_json_disk = '\"' + arr_mount[ind] + '\" : { \"device\":\" '  + arr_device[ind] + '\" , \"total_size\": \"' + str(int(arr_total_size[ind])/1024) + '\", \"used_percent\": \"' +arr_used_percent[ind] + '%\"}' 
-       disk_json_arr.append(one_json_disk) 
+        for ind in disk_ind:
+            one_json_disk = '\"' + arr_mount[ind] + '\" : { \"device\":\" '  + arr_device[ind] + '\" , \"total_size\": \"' + str(int(arr_total_size[ind])/1024) + '\", \"used_percent\": \"' +arr_used_percent[ind] + '%\"}' 
+            disk_json_arr.append(one_json_disk) 
 
-    string_memory = '\"memory\":{ \"total_ram\":\"' +  arr_mem[0] + '\",\"free_ram\":\"' + arr_mem[1] + '\",\"use_percent\":\"' +  arr_mem[2] + '\",\"total_swap\":\"' +  arr_mem[3] + '\",\"free_swap\":\"' +  arr_mem[4] + '\"},'
-    string_cpu  = '\"cpu\":{ ' + '\"user_percent\":\"' +  arr_cpu[0] + '\", \"sys_percent\":\"'  + arr_cpu[1] + '\",  \"base_info\":\"'+  arr_cpu[2] + '\" },'
-    string_disk = '\"disk\":{ ' + (','.join(disk_json_arr)) + ' }'
+        string_memory = '\"memory\":{ \"total_ram\":\"' +  arr_mem[0] + '\",\"free_ram\":\"' + arr_mem[1] + '\",\"use_percent\":\"' +  arr_mem[2] + '\",\"total_swap\":\"' +  arr_mem[3] + '\",\"free_swap\":\"' +  arr_mem[4] + '\"},'
+        string_cpu  = '\"cpu\":{ ' + '\"user_percent\":\"' +  arr_cpu[0] + '\", \"sys_percent\":\"'  + arr_cpu[1] + '\",  \"base_info\":\"'+  arr_cpu[2] + '\" },'
+        string_disk = '\"disk\":{ ' + (','.join(disk_json_arr)) + ' }'
 
 
 ###########################################SYSTEM#########################
     
-    os_release = get_os_release()
-    kernel_release = get_kernel_release()
-    port_json=[]
-    arr_tuple = port_string.split(',') 
-    for line  in arr_tuple:
-        host = line.split(":")[0]
-        port = line.split(":")[1]
-        info = check_port(host,int(port))
-        one_port_str = '\"' + port + '\":' + '\"' + info + '\"'
-        port_json.append(one_port_str)
+        os_release = get_os_release()
+        kernel_release = get_kernel_release()
+        port_json=[]
+        arr_tuple = port_string.split(',') 
+        for line  in arr_tuple:
+            host = line.split(":")[0]
+            port = line.split(":")[1]
+            info = check_port(host,int(port))
+            one_port_str = '\"' + port + '\":' + '\"' + info + '\"'
+            port_json.append(one_port_str)
 
         
     
-    ip_addr_arr = get_nic_to_ip()
-    nic_json=[]
-    bkts_in_arr,bkts_out_arr,pkts_in_arr,pkts_out_arr =  get_in_out_flows()
+        ip_addr_arr = get_nic_to_ip()
+        nic_json=[]
+        bkts_in_arr,bkts_out_arr,pkts_in_arr,pkts_out_arr =  get_in_out_flows()
     
-    for line in ip_addr_arr:
-        if line is not None  and  line !=  "127.0.0.1":    #filter lo and  Null
-            ind = ip_addr_arr.index(line)
-            one_json_nic = '\"'  + line + '\":{\" inbkts\":\"' + bkts_in_arr[ind] + '\", \"outbkts\":\"' + bkts_out_arr[ind] + '\",\"inpkts\":\"' + pkts_in_arr[ind] + '\",\"outpkts\":\"' + pkts_out_arr[ind] + '\"}'
-            nic_json.append(one_json_nic)
+        for line in ip_addr_arr:
+            if line is not None  and  line !=  "127.0.0.1":    #filter lo and  Null
+                ind = ip_addr_arr.index(line)
+                one_json_nic = '\"'  + line + '\":{\" inbkts\":\"' + bkts_in_arr[ind] + '\", \"outbkts\":\"' + bkts_out_arr[ind] + '\",\"inpkts\":\"' + pkts_in_arr[ind] + '\",\"outpkts\":\"' + pkts_out_arr[ind] + '\"}'
+                nic_json.append(one_json_nic)
 
-    string_time = '\"time\":\"' + str(int(time.time())) + '\",'
-    string_port = '\"port\":{' + ','.join(port_json) + '},'
-    string_nic = '\"netflow\":{ ' + ( ','.join(nic_json)) + '},'
+        string_time = '\"time\":\"' + str(int(time.time())) + '\",'
+        string_port = '\"port\":{' + ','.join(port_json) + '},'
+        string_nic = '\"netflow\":{ ' + ( ','.join(nic_json)) + '},'
 
-    print string_nic
-    string_version = '\"version\":{ \"os\":\"' + os_release + '\", \" kernel\":\"' + kernel_release + '\"}'
+       # print string_nic
+        string_version = '\"version\":{ \"os\":\"' + os_release + '\", \" kernel\":\"' + kernel_release + '\"}'
     
-    print string_version
+        #print string_version
 
 ################################################## SOFTWARE ########################################################
-    post_ip=""
-    post_port=""
-    guid=""
-    peerhost=""
-    monit_ip=""
-    broker_list=""
-    get_install_dir()
-    iprobe_version = get_iprobe_version()
-    ccdk_version = get_ccdk_version()
+        post_ip=""
+        post_port=""
+        guid=""
+        peerhost=""
+        monit_ip=""
+        broker_list=""
+        get_install_dir()
+        iprobe_version = get_iprobe_version()
+        ccdk_version = get_ccdk_version()
 
-    arr_conf = get_saas_conf()
-    for line in arr_conf:
-        if 'post_server_ip' in line:
-            post_ip = line.split('=')[1].strip()
-        if 'post_server_port' in line:
-            post_port = line.split('=')[1].strip()
-        if 'guid' in line:
-            guid = line.split('=')[1].strip()
-        if 'peerhost' in line:
-            peerhost = line.split('=')[1].strip()
-        if 'metadata.broker.list' in line:
-            broker_list = line.split('=')[1].strip()
-        if 'monit_ip' in line:
-            monit_ip = line.split('=')[1].strip()
+        arr_conf = get_saas_conf()
+        for line in arr_conf:
+            if 'post_server_ip' in line:
+                post_ip = line.split('=')[1].strip()
+            if 'post_server_port' in line:
+                post_port = line.split('=')[1].strip()
+            if 'guid' in line:
+                guid = line.split('=')[1].strip()
+            if 'peerhost' in line:
+                peerhost = line.split('=')[1].strip()
+            if 'metadata.broker.list' in line:
+                broker_list = line.split('=')[1].strip()
+            if 'monit_ip' in line:
+                monit_ip = line.split('=')[1].strip()
    
-    monit_comm = installdir + 'monit -c ' + installdir + 'monitrc status'
-    monit_status = Execute(monit_comm).replace('\r','').replace('\n', r'\n')
+        monit_comm = installdir + 'monit -c ' + installdir + 'monitrc status'
+        monit_status = Execute(monit_comm).replace('\r','').replace('\n', r'\n')
 
-    string_soft = '\"iprobe_version\":\"' + iprobe_version + '\",\"ccdk_version\":\"' + ccdk_version +  '\",\"monit_ip\":\"' + monit_ip  + '\",\"monit_status\":\"' + monit_status + '\",\"saas_conf\":{ \"broker\":\"' + broker_list + '\",\"post_ip\":\"' + post_ip + '\",\"post_port\":\"' + post_port +  '\",\"guid\":\"' + guid + '\",\"peerhost\":\"' + peerhost + '\"}'
+        string_soft = '\"iprobe_version\":\"' + iprobe_version + '\",\"ccdk_version\":\"' + ccdk_version +  '\",\"monit_ip\":\"' + monit_ip  + '\",\"monit_status\":\"' + monit_status + '\",\"saas_conf\":{ \"broker\":\"' + broker_list + '\",\"post_ip\":\"' + post_ip + '\",\"post_port\":\"' + post_port +  '\",\"guid\":\"' + guid + '\",\"peerhost\":\"' + peerhost + '\"}'
 
 
 
-    post_data = '{ \"hardware\":{' + string_memory + string_cpu + string_disk + '},' + '\"system\":{' + string_time +  string_port + string_nic + string_version + '},' + '\"software\":{' + string_soft + ' }}'
-    print post_data 
+        post_data = '{ \"hardware\":{' + string_memory + string_cpu + string_disk + '},' + '\"system\":{' + string_time +  string_port + string_nic + string_version + '},' + '\"software\":{' + string_soft + ' }}'
+        #print post_data 
 
-    post(post_url , post_data)
+        post(post_url , post_data)
+        time.sleep(60)
