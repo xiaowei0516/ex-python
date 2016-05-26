@@ -1,0 +1,344 @@
+#!/usr/bin/env python
+import sys
+import sys as system
+import time
+import os
+import re
+import subprocess
+import psutil
+import socket
+import fcntl
+import struct
+import platform
+
+installdir = '/opt/iprobe'
+ccdkdir = '/opt/ccdk'
+SNMP_GET_IPADDR = '127.0.0.1'
+
+port_string = '192.168.10.10:22,192.168.10.87:80'
+
+OS_INFO = '1.3.6.1.2.1.1.1'
+MEM_SIZE = '1.3.6.1.2.1.25.2.2.0'
+MEM_FREE = '1.3.6.1.4.1.2021.4.6.0'
+SWAP_SIZE = '1.3.6.1.4.1.2021.4.3.0'
+SWAP_FREE = '1.3.6.1.4.1.2021.4.4.0'
+
+#DISK_MOUNT_PATH = '1.3.6.1.4.1.2021.9.1.2' "Path where the disk is mounted" dskPath WALK
+
+#SPACE_DISK_PERCENT = '1.3.6.1.4.1.2021.9.1.9' "Percentage of space used on disk" dskPercent WALK
+
+#1.3.6.1.4.1.2021.9.1.10 "Percentage of inodes used on disk" dskPercentNode WALK
+
+#Linux  Windows
+def  check_platform():
+    plat = platform.system()
+    return plat
+
+def check_os():
+    osname = platform.dist()  #tuple
+    return osname[0] + osname[1]
+
+
+def get_time():
+    return int(time.time())
+
+
+def Execute(cmd,close_fds=True):
+    #Log("cmd=[%s]"%(cmd))
+    try:
+        proc = subprocess.Popen(cmd, shell = True, stdout = subprocess.PIPE, close_fds=close_fds)
+        return proc.communicate()[0]
+    except Exception, e:
+        print ("Execute failed, command: %s, error: %s" %(cmd, str(e)))
+        return None
+
+def walk_snmp_info(ipaddr, mib):
+    cmd = 'snmpwalk -v 2c -c public ' + ipaddr + ' ' + mib
+    info = Execute(cmd)
+    if "Timeout" in info:
+        print "connect %s Timeout" %ipaddr
+        return None
+    if "Unknown Object" in info:
+        print "mib Unknown" %mib
+        return None
+    return info
+    
+    
+def get_snmp_info(ipaddr, mib):
+    cmd = 'snmpget -v 2c -c public ' + ipaddr + ' ' + mib
+    info = Execute(cmd)
+    if "Timeout" in info:
+        print "connect %s Timeout" %ipaddr
+    if "Unknown Object" in info:
+        print "mib Unknown" %mib
+        return None
+    return info
+    
+
+
+################################## HARDWARE ###########################################
+# return arr: capacity (M) 
+# [total_mem, free_mem, used_percent,  swap_total, swap_free]
+def get_memory(ip=SNMP_GET_IPADDR):
+    mem_arr = [] # total,free,percent,swapfree  # K
+    total_mem_info = walk_snmp_info(ip,MEM_SIZE)
+    if total_mem_info is not None:
+        total_mem_k = total_mem_info.split('=')[1].split(':')[1].strip().split()[0].strip()
+        total_mem = str(int(total_mem_k)/1024)
+    else:
+        total_mem = None
+    mem_arr.append(total_mem)
+
+    free_mem_info = walk_snmp_info(ip,MEM_FREE)
+    if free_mem_info is not None:
+        free_mem_k = free_mem_info.split('=')[1].split(':')[1].strip().split()[0].strip()
+        free_mem = str(int(free_mem_k)/1024)    
+    else:
+        free_mem = None
+    mem_arr.append(free_mem)
+
+    if total_mem is not None  and free_mem is not None:
+        mem_percent = str(round(float(free_mem)/float(total_mem)*100,2))+'%'
+        mem_arr.append(mem_percent)
+    else:
+        mem_arr.append("")
+    
+    total_swap_info = walk_snmp_info(ip,SWAP_SIZE)
+    if total_swap_info is not None:
+        total_swap_k = total_swap_info.split('=')[1].split(':')[1].strip().split()[0].strip()
+        total_swap = str(int(total_swap_k)/1024)
+    else:
+        total_swap = None
+    mem_arr.append(total_swap)
+
+    free_swap_info = walk_snmp_info(ip,SWAP_FREE)
+    if free_swap_info is not None:
+        free_swap_k = free_swap_info.split('=')[1].split(':')[1].strip().split()[0].strip()
+        free_swap = str(int(free_swap_k)/1024)
+    else:
+        free_swap = None
+    mem_arr.append(free_swap)
+
+    return mem_arr
+    
+    
+
+###get disk
+DISK_MOUNT = '1.3.6.1.4.1.2021.9.1.2'
+DISK_DEVICE = '1.3.6.1.4.1.2021.9.1.3'
+DISK_PERCENT='1.3.6.1.4.1.2021.9.1.9'
+DISK_TOTAL_SIZE = '1.3.6.1.4.1.2021.9.1.6'
+
+def func_disk_base_info(ip=SNMP_GET_IPADDR, mib=DISK_MOUNT,  arr=[]):
+    info_disk_mount = walk_snmp_info(ip, mib).strip()  #string
+    if info_disk_mount is not None:
+        arr_disk_mount = info_disk_mount.split('\n')
+        for ele in arr_disk_mount:
+            arr.append(ele.split('=')[1].split(':')[1].strip())
+    return arr
+
+def get_disk(ip=SNMP_GET_IPADDR):
+    arr_mount=[]
+    arr_device=[]
+    arr_total_size=[]
+    arr_used_percent=[]
+    arr_mount = func_disk_base_info(ip, DISK_MOUNT, arr_mount)
+    arr_device = func_disk_base_info(ip, DISK_DEVICE, arr_device)
+    arr_total_size = func_disk_base_info(ip, DISK_TOTAL_SIZE, arr_total_size)
+    arr_used_percent  = func_disk_base_info(ip, DISK_PERCENT, arr_used_percent)
+    return arr_mount,arr_device,arr_total_size,arr_used_percent
+
+
+USER_CPU_PERCENT =  '1.3.6.1.4.1.2021.11.9.0'
+SYS_CPU_PERCENT = '1.3.6.1.4.1.2021.11.10.0'
+CPU_LOAD = '1.3.6.1.2.1.25.3.3.1.2'
+CPU_DESC = '1.3.6.1.2.1.25.3.2.1.3'
+def cpu_cores():
+    cpu_load_info = walk_snmp_info(SNMP_GET_IPADDR, CPU_LOAD)
+    if cpu_load_info is not None:
+        cpu_cores = str(len(cpu_load_info.strip().split('\n')))
+    else:
+        cpu_cores = '0'
+    return cpu_cores
+
+def get_cpu_desc():
+    cpu_desc_info = walk_snmp_info(SNMP_GET_IPADDR, CPU_DESC)
+    if cpu_desc_info is not None:
+        cpu_desc = cpu_desc_info.split('\n')[0].split('=')[1].split(':')[2]
+    else:
+        cpu_desc = ""
+    return cpu_desc
+
+def func_cpu_info(ip=SNMP_GET_IPADDR, mib=USER_CPU_PERCENT):
+    user_cpu_info = walk_snmp_info(ip, mib)
+    if user_cpu_info is not None:
+        user_cpu_percent  = user_cpu_info.split('=')[1].split(':')[1].strip() + '%'
+    else:
+        user_cpu_percent = None
+    return user_cpu_percent
+
+#return array:
+#cpu_arr [user_cpu_percent, ]
+def get_cpu(ip=SNMP_GET_IPADDR):
+    cpu_arr=[]
+    user_cpu_percent = func_cpu_info(ip, USER_CPU_PERCENT)
+    cpu_arr.append(user_cpu_percent)
+    sys_cpu_percent = func_cpu_info(ip, SYS_CPU_PERCENT)
+    cpu_arr.append(sys_cpu_percent)
+    cpu_cores()
+    cpu_desc = get_cpu_desc()
+    if cpu_desc is not None:
+        cpu_base = cpu_desc + " with " + cpu_cores() + " cores"
+        cpu_arr.append(cpu_base)
+    return cpu_arr
+   
+#########################################SYSTEM###############################################################
+NIC_DESC = '1.3.6.1.2.1.2.2.1.2'
+OUT_BKTS = '1.3.6.1.2.1.2.2.1.16'
+OUT_PKTS = '1.3.6.1.2.1.2.2.1.17'
+IN_BKTS = '1.3.6.1.2.1.2.2.1.10'
+IN_PKTS = '1.3.6.1.2.1.2.2.1.11'
+
+def get_ip_address(ifname):
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        return socket.inet_ntoa(fcntl.ioctl(
+            s.fileno(),
+            0x8915,  # SIOCGIFADDR   
+            struct.pack('256s', ifname[:15])
+            )[20:24])
+    except IOError,e:
+	    pass
+
+def get_nic_to_ip():
+#    nic_arr=[]
+    ipaddr_arr=[]
+    nic_info = walk_snmp_info(SNMP_GET_IPADDR, NIC_DESC)
+    if nic_info is not None:
+        all_nic = nic_info.strip().split('\n')
+        for line in all_nic:
+            one_nic = line.split('=')[1].split(':')[1].strip()
+#            if one_nic == 'lo':
+#                continue
+#		nic_arr.append(one_nic)
+            one_ip = get_ip_address(one_nic)
+            ipaddr_arr.append(one_ip)
+    return ipaddr_arr
+
+def get_packet_info(mib=IN_BKTS, arr=[]):
+    pack_info = walk_snmp_info(SNMP_GET_IPADDR, mib)
+    if pack_info is not None:
+        pack_list = pack_info.strip().split('\n')
+        for line in pack_list:
+            number = line.split('=')[1].split(':')[1].strip()
+            arr.append(number)
+    return arr
+
+def get_in_out_flows():
+    bkts_in_arr = []
+    bkts_out_arr = []
+    pkts_in_arr = []
+    pkts_out_arr = []
+    bkts_in_arr = get_packet_info(IN_BKTS, bkts_in_arr)
+    bkts_out_arr = get_packet_info(OUT_BKTS, bkts_out_arr)
+    pkts_in_arr = get_packet_info(IN_PKTS, pkts_in_arr)
+    pkts_out_arr = get_packet_info(OUT_PKTS, pkts_out_arr)
+    return bkts_in_arr,bkts_out_arr,pkts_in_arr,pkts_out_arr
+
+def  get_os_release():
+    osname = platform.dist()  #tuple
+    return osname[0] + osname[1]
+
+def get_kernel_release(ip=SNMP_GET_IPADDR, mib=OS_INFO):
+    return platform.release()
+
+
+def check_port(host, port):
+    try:
+        print "cc"
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except Exception:
+        print "aabb"
+        return "False"
+    print "dd"
+    s.settimeout(10)
+    try:
+        s.connect((host, port))
+    except Exception,e:
+        print e
+        s.close()
+        return "False"
+    s.close()
+    return "Ok"
+
+
+
+
+if __name__ == '__main__':
+##################################HARDWARE###############################
+    disk_ind=[]
+    disk_json_arr=[]
+    repeat_flag=0
+
+    arr_mem = get_memory()
+    arr_cpu = get_cpu()
+    arr_mount,arr_device,arr_total_size,arr_used_percent = get_disk()
+
+	#add not repeat indict to disk_ind
+    for elem in range(len(arr_mount)):
+        if elem > 0:
+            for i in range(elem):
+                if arr_mount[elem] == arr_mount[i]:
+                    repeat_flag=1
+            if repeat_flag == 0:
+                disk_ind.append(elem)
+            repeat_flag = 0  #reset flags
+        else:
+            disk_ind.append(elem)
+
+    for ind in disk_ind:
+       one_json_disk = '\"' + arr_mount[ind] + '\" : { \"device\":\" '  + arr_device[ind] + '\" , \"total_size\": \"' + arr_total_size[ind] + '\", \"used_percent\": \"' +arr_used_percent[ind] + '%\"}' 
+       disk_json_arr.append(one_json_disk) 
+
+    string_memory = '\"memory\":{ \"total_ram\":\"' +  arr_mem[0] + '\",\"free_ram\":\"' + arr_mem[1] + '\",\"use_percent\":\"' +  arr_mem[2] + '\",\"total_swap\":\"' +  arr_mem[3] + '\",\"free_swap\":\"' +  arr_mem[4] + '\"},'
+    string_cpu  = '\"cpu\":{ ' + '\"user_percent\":\"' +  arr_cpu[0] + '\", \"sys_percent\":\"'  + arr_cpu[1] + '\",  \"base_info\":\"'+  arr_cpu[2] + '\" },'
+    string_disk = '\"disk\":{ ' + (','.join(disk_json_arr)) + ' }'
+
+
+###########################################SYSTEM#########################
+    
+    os_release = get_os_release()
+    kernel_release = get_kernel_release()
+    port_json=[]
+    arr_tuple = port_string.split(',') 
+    for line  in arr_tuple:
+        host = line.split(":")[0]
+        port = line.split(":")[1]
+        info = check_port(host,int(port))
+        one_port_str = '\"' + port + '\":' + '\"' + info + '\"'
+        port_json.append(one_port_str)
+
+        
+    
+    ip_addr_arr = get_nic_to_ip()
+    nic_json=[]
+    bkts_in_arr,bkts_out_arr,pkts_in_arr,pkts_out_arr =  get_in_out_flows()
+    
+    for line in ip_addr_arr:
+        if line is not None  and  line !=  "127.0.0.1":
+            ind = ip_addr_arr.index(line)
+            one_json_nic = '\"'  + line + '\":{\" inbkts\":\"' + bkts_in_arr[ind] + '\", \"outbkts\":\"' + bkts_out_arr[ind] + '\",\"inpkts\":\"' + pkts_in_arr[ind] + '\",\"out_pkts\":\"' + pkts_out_arr[ind] + '\"}'
+            nic_json.append(one_json_nic)
+
+    string_port = '\"port\":{' + ','.join(port_json) + '},'
+    string_nic = '\"netflow\":{ ' + ( ','.join(nic_json)) + '},'
+
+    print string_nic
+    string_version = '\"version\":{ \"os\":\"' + os_release + '\", \" kernel\":\"' + kernel_release + '\"}'
+    
+    print string_version
+
+
+  #  post_data = '{ \"hardware\":{' + string_memory + string_cpu + string_disk + '}}'
+    post_data = '{ \"hardware\":{' + string_memory + string_cpu + string_disk + '},' + '\"system\":{' + string_port + string_nic + string_version + '}}'
+    print post_data 
