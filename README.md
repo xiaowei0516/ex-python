@@ -9,3 +9,7 @@ python example
   6. multiprocessing  [ mutli process , cross-platform]
   7. multiprocess_pool [ process pool]
   8. multiporcess_queue [ process communicate]
+  9. theading_one [start thread]
+  10.threading_lock [global variable visit, need lock in multi threads]
+  11.threading_cross_err [thread competition ,caused process run error]
+  12.thread_all_cpu [use all cpu running,but python use GIL lock! c/c++/java OK]
