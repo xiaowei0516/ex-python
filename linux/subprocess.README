@@ -1,0 +1,46 @@
+#!/usr/bin/python
+
+shell默认为False，在Linux下，shell=False时, Popen调用os.execvp()执行args指定的程序；shell=True时，如果args是字符串，Popen直接调用系统的Shell来执行args指定的程序，如果args是一个序列，则args的第一项是定义程序命令字符串，其它项是调用系统Shell时的附加参数。
+```
+call parameter:  
+       sequence
+return 
+       int
+
+descript:
+   wait subprocess execute closed, return 
+```
+
+import subprocess
+proc = subprocess.call(['ls', '-l'])
+print type(proc)
+print proc
+
+----------------------------
+
+subprocess.check_call()  
+return:
+    return code
+descript:
+     same as call
+
+---------------------------
+
+subprocess.check_output()
+return:
+     return string [subprocess process execute result]
+descript:
+      execute  sequence
+
+-----------------------------
+
+up all function  is consist of  Popen .
+Popen() is a class. 
+
+if we want to wait subprocess success, we should  use wait()
+
+proc = subprocess.Popen("ls -l", stdout=subprocess.PIPE, shell=True)
+proc.communicate()[0]
+
+communicate :  interact with subprocess , wait subprocess terminate.
+ 

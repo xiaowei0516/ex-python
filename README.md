@@ -13,3 +13,5 @@ python example
   10.threading_lock [global variable visit, need lock in multi threads]
   11.threading_cross_err [thread competition ,caused process run error]
   12.thread_all_cpu [use all cpu running,but python use GIL lock! c/c++/java OK]
+  13.subprocess_output [wait subprocess terminate, return subprocess execute result]
+  14.subprocess_communicate [ interact with subprocess]
