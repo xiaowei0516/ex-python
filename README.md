@@ -17,3 +17,4 @@ python example
   14. subprocess_communicate [ interact with subprocess]
   15. args_kwds   [ argument formate ]
   16. args_kwds_decode [ decode rule]
+  17. decorate_class [class decoreate]
