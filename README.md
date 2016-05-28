@@ -15,3 +15,5 @@ python example
   12. thread_all_cpu [use all cpu running,but python use GIL lock! c/c++/java OK]
   13. subprocess_output [wait subprocess terminate, return subprocess execute result]
   14. subprocess_communicate [ interact with subprocess]
+  15. args_kwds   [ argument formate ]
+  16. args_kwds_decode [ decode rule]
