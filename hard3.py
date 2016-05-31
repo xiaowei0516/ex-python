@@ -422,7 +422,7 @@ if __name__ == '__main__':
 
             for ind in range(len(arr_mount)):
                 one_json_disk = '\"' + arr_mount[ind] + '\" : { \"device\":\" '  + arr_device[ind] + '\" , \"total_size\": \"' + str(int(arr_total_size[ind])/1024) + '\", \"used_percent\": \"' +arr_used_percent[ind] + '%\"}'
-               disk_json_arr.append(one_json_disk)
+                disk_json_arr.append(one_json_disk)
 
             string_cpu  = '\"cpu\":{ ' + '\"user_percent\":\"' + str(psutil.cpu_percent(interval=1)) + '\", \"sys_percent\":\"'  + '' + '\",  \"base_info\":\"'+  str(psutil.cpu_count(logical=False))   + '\" },'
             string_memory = '\"memory\":{ \"total_ram\":\"' +  arr_mem[0] + '\",\"free_ram\":\"' + str(int(str(psutil.virtual_memory().free).replace('L',''))/1024/1024) + '\",\"use_percent\":\"' +  str(psutil.virtual_memory().percent) + '%'+ '\",\"total_swap\":\"' +  str(int(str(psutil.swap_memory().total).replace('L',''))/1024/1024) + '\",\"free_swap\":\"' +  str(int(str(psutil.swap_memory().free).replace('L',''))/1024/1024) + '\"},'
@@ -457,31 +457,31 @@ if __name__ == '__main__':
                    arr_nic_recv_packets.append(str(netdic[nic_disc].packets_recv))
 
 
-           arr_ipv4 = []
-           have_ipv4_flags=0
-           ifaddr = psutil.net_if_addrs()
-           for line  in  ifaddr.keys():
-               if line in arr_netdic:
-                   for ind in ifaddr[line]:
-                       if 2 ==  ind.family:
-                           have_ipv4_flags = 1
-                           arr_ipv4.append(ind.address)
-                   if have_ipv4_flags == 0:
-                       arr_ipv4.append('')
-                   have_ipv4_flags = 0
+            arr_ipv4 = []
+            have_ipv4_flags=0
+            ifaddr = psutil.net_if_addrs()
+            for line  in  ifaddr.keys():
+                if line in arr_netdic:
+                    for ind in ifaddr[line]:
+                        if 2 ==  ind.family:
+                            have_ipv4_flags = 1
+                            arr_ipv4.append(ind.address)
+                    if have_ipv4_flags == 0:
+                        arr_ipv4.append('')
+                    have_ipv4_flags = 0
 
 
+            nic_json = []
+            for line in arr_ipv4:
+                if line is not ''  and  line !=  "127.0.0.1":    #filter lo and  Null
+                    ind = arr_ipv4.index(line)
+                    one_json_nic = '\"'  + line + '\":{\" inbkts\":\"' + arr_nic_recv_bytes[ind] + '\", \"outbkts\":\"' + arr_nic_sent_bytes[ind] + '\",\"inpkts\":\"' + arr_nic_recv_packets[ind] + '\",\"outpkts\":\"' + arr_nic_sent_packets[ind] + '\"}'
+                    nic_json.append(one_json_nic)
 
-          for line in arr_ipv4:
-              if line is not ''  and  line !=  "127.0.0.1":    #filter lo and  Null
-                  ind = arr_ipv4.index(line)
-                  one_json_nic = '\"'  + line + '\":{\" inbkts\":\"' + arr_nic_recv_bytes[ind] + '\", \"outbkts\":\"' + arr_nic_sent_bytes[ind] + '\",\"inpkts\":\"' + arr_nic_recv_packets[ind] + '\",\"outpkts\":\"' + arr_nic_sent_packets[ind] + '\"}'
-                  nic_json.append(one_json_nic)
-
-          string_time = '\"time\":\"' + str(int(time.time())) + '\",'
-          string_port = '\"port\":{' + ','.join(port_json) + '},'
-          string_nic = '\"netflow\":{ ' + ( ','.join(nic_json)) + '},'
-          string_version = '\"version\":{ \"os\":\"' + os_release + '\", \" kernel\":\"' + kernel_release + '\"}'
+            string_time = '\"time\":\"' + str(int(time.time())) + '\",'
+            string_port = '\"port\":{' + ','.join(port_json) + '},'
+            string_nic = '\"netflow\":{ ' + ( ','.join(nic_json)) + '},'
+            string_version = '\"version\":{ \"os\":\"' + os_release + '\", \" kernel\":\"' + kernel_release + '\"}'
   
 '''
           post_ip=""
