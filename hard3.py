@@ -12,7 +12,7 @@ import urllib2
 
 installdir = ''
 ccdkdir = ''
-SNMP_GET_IPADDR = '192.168.10.188'
+SNMP_GET_IPADDR = '127.0.0.1'
 #SNMP_GET_IPADDR = '192.168.10.21'
 post_url = 'http://192.168.10.22:8888/post_receive.php'
 
@@ -482,9 +482,69 @@ if __name__ == '__main__':
             string_port = '\"port\":{' + ','.join(port_json) + '},'
             string_nic = '\"netflow\":{ ' + ( ','.join(nic_json)) + '},'
             string_version = '\"version\":{ \"os\":\"' + os_release + '\", \" kernel\":\"' + kernel_release + '\"}'
-  
-'''
-          post_ip=""
+        else: 
+            disk_ind=[]
+            disk_json_arr=[]
+            repeat_flag=0
+
+            arr_mem = get_memory()
+            arr_cpu = get_cpu()
+            arr_mount,arr_device,arr_total_size,arr_used_percent = get_disk()
+
+	        #add not repeat indict to disk_ind
+            for elem in range(len(arr_mount)):
+                if elem > 0:
+                    for i in range(elem):
+                        if arr_mount[elem] == arr_mount[i]:
+                            repeat_flag=1
+                    if repeat_flag == 0:
+                        disk_ind.append(elem)
+                    repeat_flag = 0  #reset flags
+                else:
+                    disk_ind.append(elem)
+
+            for ind in disk_ind:
+                one_json_disk = '\"' + arr_mount[ind] + '\" : { \"device\":\" '  + arr_device[ind] + '\" , \"total_size\": \"' + str(int(arr_total_size[ind])/1024) + '\", \"used_percent\": \"' +arr_used_percent[ind] + '%\"}' 
+                disk_json_arr.append(one_json_disk) 
+
+            string_memory = '\"memory\":{ \"total_ram\":\"' +  arr_mem[0] + '\",\"free_ram\":\"' + arr_mem[1] + '\",\"use_percent\":\"' +  arr_mem[2] + '\",\"total_swap\":\"' +  arr_mem[3] + '\",\"free_swap\":\"' +  arr_mem[4] + '\"},'
+            string_cpu  = '\"cpu\":{ ' + '\"user_percent\":\"' +  arr_cpu[0] + '\", \"sys_percent\":\"'  + arr_cpu[1] + '\",  \"base_info\":\"'+  arr_cpu[2] + '\" },'
+            string_disk = '\"disk\":{ ' + (','.join(disk_json_arr)) + ' }'
+
+
+###########################################SYSTEM#########################
+    
+            os_release = get_os_release()
+            kernel_release = get_kernel_release()
+            port_json=[]
+            arr_tuple = port_string.split(',') 
+            for line  in arr_tuple:
+                host = line.split(":")[0]
+                port = line.split(":")[1]
+                info = check_port(host,int(port))
+                one_port_str = '\"' + port + '\":' + '\"' + info + '\"'
+                port_json.append(one_port_str)
+    
+            ip_addr_arr = get_nic_to_ip()
+            nic_json=[]
+            bkts_in_arr,bkts_out_arr,pkts_in_arr,pkts_out_arr =  get_in_out_flows()
+    
+            for line in ip_addr_arr:
+                if line is not None  and  line !=  "127.0.0.1":    #filter lo and  Null
+                    ind = ip_addr_arr.index(line)
+                    one_json_nic = '\"'  + line + '\":{\" inbkts\":\"' + bkts_in_arr[ind] + '\", \"outbkts\":\"' + bkts_out_arr[ind] + '\",\"inpkts\":\"' + pkts_in_arr[ind] + '\",\"outpkts\":\"' + pkts_out_arr[ind] + '\"}'
+                    nic_json.append(one_json_nic)
+
+            string_time = '\"time\":\"' + str(int(time.time())) + '\",'
+            string_port = '\"port\":{' + ','.join(port_json) + '},'
+            string_nic = '\"netflow\":{ ' + ( ','.join(nic_json)) + '},'
+
+           # print string_nic
+            string_version = '\"version\":{ \"os\":\"' + os_release + '\", \" kernel\":\"' + kernel_release + '\"}'
+    
+            #print string_version
+
+        post_ip=""
         post_port=""
         guid=""
         peerhost=""
@@ -517,8 +577,6 @@ if __name__ == '__main__':
 
 
         post_data = '{ \"hardware\":{' + string_memory + string_cpu + string_disk + '},' + '\"system\":{' + string_time +  string_port + string_nic + string_version + '},' + '\"software\":{' + string_soft + ' }}'
-        #print post_data 
+        print post_data 
 
-        post(post_url , post_data)
-        time.sleep(60)
-'''
+       # post(post_url , post_data)
