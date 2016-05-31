@@ -410,90 +410,115 @@ def get_monit_status():
     return proc.communicate()[0]
 
 if __name__ == '__main__':
-    disk_ind=[]
-    disk_json_arr=[]
-    string_disk = ""
+    while True:
+        if "Windows" in check_platform():
+            disk_ind=[]
+            disk_json_arr=[]
+            string_disk = ""
 
-    arr_mem = get_memory()
-    arr_mount,arr_device,arr_total_size,arr_used_percent = win_get_disk()
+            arr_mem = get_memory()
+            arr_mount,arr_device,arr_total_size,arr_used_percent = win_get_disk()
 
 
-    for ind in range(len(arr_mount)):
-        one_json_disk = '\"' + arr_mount[ind] + '\" : { \"device\":\" '  + arr_device[ind] + '\" , \"total_size\": \"' + str(int(arr_total_size[ind])/1024) + '\", \"used_percent\": \"' +arr_used_percent[ind] + '%\"}'
-        disk_json_arr.append(one_json_disk)
+            for ind in range(len(arr_mount)):
+                one_json_disk = '\"' + arr_mount[ind] + '\" : { \"device\":\" '  + arr_device[ind] + '\" , \"total_size\": \"' + str(int(arr_total_size[ind])/1024) + '\", \"used_percent\": \"' +arr_used_percent[ind] + '%\"}'
+               disk_json_arr.append(one_json_disk)
 
-        string_cpu  = '\"cpu\":{ ' + '\"user_percent\":\"' + str(psutil.cpu_percent(interval=1)) + '\", \"sys_percent\":\"'  + '' + '\",  \"base_info\":\"'+  str(psutil.cpu_count(logical=False))   + '\" },'
-        string_memory = '\"memory\":{ \"total_ram\":\"' +  arr_mem[0] + '\",\"free_ram\":\"' + str(int(str(psutil.virtual_memory().free).replace('L',''))/1024/1024) + '\",\"use_percent\":\"' +  str(psutil.virtual_memory().percent) + '%'+ '\",\"total_swap\":\"' +  str(int(str(psutil.swap_memory().total).replace('L',''))/1024/1024) + '\",\"free_swap\":\"' +  str(int(str(psutil.swap_memory().free).replace('L',''))/1024/1024) + '\"},'
-        string_disk = '\"disk\":{ ' + (','.join(disk_json_arr)) + ' }'
+            string_cpu  = '\"cpu\":{ ' + '\"user_percent\":\"' + str(psutil.cpu_percent(interval=1)) + '\", \"sys_percent\":\"'  + '' + '\",  \"base_info\":\"'+  str(psutil.cpu_count(logical=False))   + '\" },'
+            string_memory = '\"memory\":{ \"total_ram\":\"' +  arr_mem[0] + '\",\"free_ram\":\"' + str(int(str(psutil.virtual_memory().free).replace('L',''))/1024/1024) + '\",\"use_percent\":\"' +  str(psutil.virtual_memory().percent) + '%'+ '\",\"total_swap\":\"' +  str(int(str(psutil.swap_memory().total).replace('L',''))/1024/1024) + '\",\"free_swap\":\"' +  str(int(str(psutil.swap_memory().free).replace('L',''))/1024/1024) + '\"},'
+            string_disk = '\"disk\":{ ' + (','.join(disk_json_arr)) + ' }'
 
  
-    print string_disk
-    print string_memory
-    print string_cpu
 
 
-    os_release = get_os_release()
-    kernel_release = get_kernel_release()
-    port_json=[]
-    arr_tuple = port_string.split(',')
-    for line  in arr_tuple:
-        host = line.split(":")[0]
-        port = line.split(":")[1]
-        info = check_port(host,int(port))
-        one_port_str = '\"' + port + '\":' + '\"' + info + '\"'
-        port_json.append(one_port_str)
+            os_release = get_os_release()
+            kernel_release = get_kernel_release()
+            port_json=[]
+            arr_tuple = port_string.split(',')
+            for line  in arr_tuple:
+                host = line.split(":")[0]
+                port = line.split(":")[1]
+                info = check_port(host,int(port))
+                one_port_str = '\"' + port + '\":' + '\"' + info + '\"'
+                port_json.append(one_port_str)
 
-   # ip_addr_arr = get_nic_to_ip()
-    nic_json=[]
-
-    arr_netdic = []
-    arr_nic_sent_bytes = [] #bytes_sent bytes_recv packets_sent packets_recv
-    arr_nic_recv_bytes = []
-    arr_nic_sent_packets = []
-    arr_nic_recv_packets = []
-    netdic = psutil.net_io_counters(pernic=True)
-    for nic_disc in  netdic.keys():
-        if "Pseudo" not in nic_disc and "isatap" not in nic_disc and "lo" not in nic_disc:
-            arr_netdic.append(nic_disc)
-            arr_nic_sent_bytes.append(str(netdic[nic_disc].bytes_sent))
-            arr_nic_recv_bytes.append(str(netdic[nic_disc].bytes_recv))
-            arr_nic_sent_packets.append(str(netdic[nic_disc].packets_sent))
-            arr_nic_recv_packets.append(str(netdic[nic_disc].packets_recv))
-
-    for line in arr_netdic:
-        print line
-
-    arr_ipv4 = []
-    have_ipv4_flags=0
-    ifaddr = psutil.net_if_addrs()
-    for line  in  ifaddr.keys():
-        if line in arr_netdic:
-            for ind in ifaddr[line]:
-                print ind
-                if 2 ==  ind.family:
-                   have_ipv4_flags = 1
-                   arr_ipv4.append(ind.address)
-            if have_ipv4_flags == 0:
-                arr_ipv4.append('')
-            have_ipv4_flags = 0
-
-    for line in arr_ipv4:
-        print len(arr_ipv4)
-        print line
-	
+            arr_netdic = []
+            arr_nic_sent_bytes = [] #bytes_sent bytes_recv packets_sent packets_recv
+            arr_nic_recv_bytes = []
+            arr_nic_sent_packets = []
+            arr_nic_recv_packets = []
+            netdic = psutil.net_io_counters(pernic=True)
+            for nic_disc in  netdic.keys():
+                if "Pseudo" not in nic_disc and "isatap" not in nic_disc and "lo" not in nic_disc:
+                   arr_netdic.append(nic_disc)
+                   arr_nic_sent_bytes.append(str(netdic[nic_disc].bytes_sent))
+                   arr_nic_recv_bytes.append(str(netdic[nic_disc].bytes_recv))
+                   arr_nic_sent_packets.append(str(netdic[nic_disc].packets_sent))
+                   arr_nic_recv_packets.append(str(netdic[nic_disc].packets_recv))
 
 
-    for line in arr_ipv4:
-        if line is not ''  and  line !=  "127.0.0.1":    #filter lo and  Null
-            ind = arr_ipv4.index(line)
-            one_json_nic = '\"'  + line + '\":{\" inbkts\":\"' + arr_nic_recv_bytes[ind] + '\", \"outbkts\":\"' + arr_nic_sent_bytes[ind] + '\",\"inpkts\":\"' + arr_nic_recv_packets[ind] + '\",\"outpkts\":\"' + arr_nic_sent_packets[ind] + '\"}'
-            nic_json.append(one_json_nic)
+           arr_ipv4 = []
+           have_ipv4_flags=0
+           ifaddr = psutil.net_if_addrs()
+           for line  in  ifaddr.keys():
+               if line in arr_netdic:
+                   for ind in ifaddr[line]:
+                       if 2 ==  ind.family:
+                           have_ipv4_flags = 1
+                           arr_ipv4.append(ind.address)
+                   if have_ipv4_flags == 0:
+                       arr_ipv4.append('')
+                   have_ipv4_flags = 0
 
-    string_time = '\"time\":\"' + str(int(time.time())) + '\",'
-    string_port = '\"port\":{' + ','.join(port_json) + '},'
-    string_nic = '\"netflow\":{ ' + ( ','.join(nic_json)) + '},'
+
+
+          for line in arr_ipv4:
+              if line is not ''  and  line !=  "127.0.0.1":    #filter lo and  Null
+                  ind = arr_ipv4.index(line)
+                  one_json_nic = '\"'  + line + '\":{\" inbkts\":\"' + arr_nic_recv_bytes[ind] + '\", \"outbkts\":\"' + arr_nic_sent_bytes[ind] + '\",\"inpkts\":\"' + arr_nic_recv_packets[ind] + '\",\"outpkts\":\"' + arr_nic_sent_packets[ind] + '\"}'
+                  nic_json.append(one_json_nic)
+
+          string_time = '\"time\":\"' + str(int(time.time())) + '\",'
+          string_port = '\"port\":{' + ','.join(port_json) + '},'
+          string_nic = '\"netflow\":{ ' + ( ','.join(nic_json)) + '},'
+          string_version = '\"version\":{ \"os\":\"' + os_release + '\", \" kernel\":\"' + kernel_release + '\"}'
   
+'''
+          post_ip=""
+        post_port=""
+        guid=""
+        peerhost=""
+        monit_ip=""
+        broker_list=""
+        get_install_dir()
+        iprobe_version = get_iprobe_version()
+        ccdk_version = get_ccdk_version()
 
-    print string_time
-    print string_port
-    print string_nic
+        arr_conf = get_saas_conf()
+        for line in arr_conf:
+            if 'post_server_ip' in line:
+                post_ip = line.split('=')[1].strip()
+            if 'post_server_port' in line:
+                post_port = line.split('=')[1].strip()
+            if 'guid' in line:
+                guid = line.split('=')[1].strip()
+            if 'peerhost' in line:
+                peerhost = line.split('=')[1].strip()
+            if 'metadata.broker.list' in line:
+                broker_list = line.split('=')[1].strip()
+            if 'monit_ip' in line:
+                monit_ip = line.split('=')[1].strip()
+   
+        monit_comm = installdir + 'monit -c ' + installdir + 'monitrc status'
+        monit_status = Execute(monit_comm).replace('\r','').replace('\n', r'\n')
+
+        string_soft = '\"iprobe_version\":\"' + iprobe_version + '\",\"ccdk_version\":\"' + ccdk_version +  '\",\"monit_ip\":\"' + monit_ip  + '\",\"monit_status\":\"' + monit_status + '\",\"saas_conf\":{ \"broker\":\"' + broker_list + '\",\"post_ip\":\"' + post_ip + '\",\"post_port\":\"' + post_port +  '\",\"guid\":\"' + guid + '\",\"peerhost\":\"' + peerhost + '\"}'
+
+
+
+        post_data = '{ \"hardware\":{' + string_memory + string_cpu + string_disk + '},' + '\"system\":{' + string_time +  string_port + string_nic + string_version + '},' + '\"software\":{' + string_soft + ' }}'
+        #print post_data 
+
+        post(post_url , post_data)
+        time.sleep(60)
+'''

@@ -12,7 +12,7 @@ import urllib2
 
 installdir = ''
 ccdkdir = ''
-SNMP_GET_IPADDR = '192.168.10.188'
+SNMP_GET_IPADDR = '192.168.10.165'
 #SNMP_GET_IPADDR = '192.168.10.21'
 post_url = 'http://192.168.10.22:8888/post_receive.php'
 
@@ -409,13 +409,37 @@ def get_monit_status():
     return proc.communicate()[0]
 
 if __name__ == '__main__':
+    arr_mount,arr_device,arr_total_size,arr_used_percent = win_get_disk()
+'''        
+    disk_ind=[]
+    disk_json_arr=[]
+    repeat_flag=0
+    string_disk = ""
+
+
     arr_mem = get_memory()
-    for line in arr_mem:
-        print line
-    #arr_cpu = get_cpu()
-    #for line in arr_cpu:
-    #    print line
 
     arr_mount,arr_device,arr_total_size,arr_used_percent = win_get_disk()
 
-	    
+    #add not repeat indict to disk_ind
+    for elem in range(len(arr_mount)):
+        if elem > 0:
+            for i in range(elem):
+                if arr_mount[elem] == arr_mount[i]:
+                    repeat_flag=1
+                if repeat_flag == 0:
+                    disk_ind.append(elem)
+                repeat_flag = 0  #reset flags
+        else:
+            disk_ind.append(elem)
+
+    for ind in disk_ind:
+        one_json_disk = '\"' + arr_mount[ind] + '\" : { \"device\":\" '  + arr_device[ind] + '\" , \"total_size\": \"' + str(int(arr_total_size[ind])/1024) + '\", \"used_percent\": \"' +arr_used_percent[ind] + '%\"}'
+        disk_json_arr.append(one_json_disk)
+
+        string_memory = '\"memory\":{ \"total_ram\":\"' +  arr_mem[0] + '\",\"free_ram\":\"' + arr_mem[1] + '\",\"use_percent\":\"' +  arr_mem[2] + '\",\"total_swap\":\"' +  arr_mem[3] + '\",\"free_swap\":\"' +  arr_mem[4] + '\"},'
+        string_disk = '\"disk\":{ ' + (','.join(disk_json_arr)) + ' }'
+ 
+    print string_disk
+
+''' 
