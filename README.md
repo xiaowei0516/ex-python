@@ -20,3 +20,4 @@ python example
   17. decorate_class [class decoreate]
   18. untar  [ use tarfile , untar .tar.gz ]
   19. md5_encrypt [ generate file md5  hex ]
+  20. list_all_file [ list all file special directory, using os.walk]
