@@ -19,3 +19,4 @@ python example
   16. args_kwds_decode [ decode rule]
   17. decorate_class [class decoreate]
   18. untar  [ use tarfile , untar .tar.gz ]
+  19. md5_encrypt [ generate file md5  hex ]
