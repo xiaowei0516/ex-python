@@ -22,3 +22,5 @@ python example
   19. md5_encrypt [ generate file md5  hex ]
   20. md5_check   [ check all.md5 , eq  md5sum -c all.md5;  if file change, return False, else Ok ]
   21. list_all_file [ list all file special directory, using os.walk]
+  22. class_func.py [ classmethod staticmethod use, both can be called by class name]
+  23. class_func.md [class_func.py explain]
