@@ -22,3 +22,5 @@ python example
 
 ###windows
   1. py2exe [i will use win32 edition]
+  2. py-pack (python program pack using py2exe)
+
