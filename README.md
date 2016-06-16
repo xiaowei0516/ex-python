@@ -18,3 +18,7 @@ python example
   15. args_kwds   [ argument formate ]
   16. args_kwds_decode [ decode rule]
   17. decorate_class [class decoreate]
+  
+
+###windows
+  1. py2exe [i will use win32 edition]
