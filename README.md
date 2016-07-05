@@ -24,6 +24,7 @@ python example
   21. list_all_file [ list all file special directory, using os.walk]
   22. class_func.py [ classmethod staticmethod use, both can be called by class name]
   23. class_func.md [class_func.py explain]
+  24. getnode.py  [cpu node info, generate node.cfg]
 
 ###windows
   1. py2exe [i will use win32 edition]
