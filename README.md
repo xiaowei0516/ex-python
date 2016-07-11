@@ -25,6 +25,7 @@ python example
   22. class_func.py [ classmethod staticmethod use, both can be called by class name]
   23. class_func.md [class_func.py explain]
   24. getnode.py  [cpu node info, generate node.cfg]
+  25. eth_to_ip.py   [nic name to ip:  "eth0" -> "192.168.10.10"]
 
 ###windows
   1. py2exe [i will use win32 edition]
