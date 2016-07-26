@@ -30,6 +30,8 @@ python example
   27. myrange.py [create a iterator object, understand iterator run-procedure]
   28. myrang-2.py [Iterables and iterator object, solve iterables not repeat many times]
   29. yield-1.py [generators function, non return , using yield, understand yield execute]
+  30. yield-2.py [generators, using send transmit parameter to yield]
+  31. yield-fib.py [generators application, implement fib array]
 
 ###windows
   1. py2exe [i will use win32 edition]
