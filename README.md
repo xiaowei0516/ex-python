@@ -27,6 +27,7 @@ python example
   24. getnode.py  [cpu node info, generate node.cfg]
   25. eth_to_ip.py   [nic name to ip:  "eth0" -> "192.168.10.10"]
   26. pipe.py  [father <-> child process interative]
+  27. myrange.py [create a iterator object, understand iterator run-procedure]
 
 ###windows
   1. py2exe [i will use win32 edition]
