@@ -32,6 +32,7 @@ python example
   29. yield-1.py [generators function, non return , using yield, understand yield execute]
   30. yield-2.py [generators, using send transmit parameter to yield]
   31. yield-fib.py [generators application, implement fib array]
+  32. yield-file.py [generators application, log filter]
 
 ###windows
   1. py2exe [i will use win32 edition]
