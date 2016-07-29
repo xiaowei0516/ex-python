@@ -37,7 +37,8 @@ python example
   34. tar.py [ tar directory]
   35. decorator_func.py [decorator function]
   36. decorator_func_2.py [decorator function, the same with 35]
-  37. func_args.py [function parameter parse, use" \*args]
+  37. func_args.py [function parameter parse, use \*args]
+  38. func_argv.py [function parameter parse, use \*\*argv ]
 
 ###windows
   1. py2exe [i will use win32 edition]
