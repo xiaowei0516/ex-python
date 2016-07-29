@@ -33,6 +33,7 @@ python example
   30. yield-2.py [generators, using send transmit parameter to yield]
   31. yield-fib.py [generators application, implement fib array]
   32. yield-file.py [generators application, log filter]
+  33. switch.py [simulate other language switch-case, python use dict ]
 
 ###windows
   1. py2exe [i will use win32 edition]
