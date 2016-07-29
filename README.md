@@ -35,6 +35,8 @@ python example
   32. yield-file.py [generators application, log filter]
   33. switch.py [simulate other language switch-case, python use dict ]
   34. tar.py [ tar directory]
+  35. decorator_func.py [decorator function]
+  36. decorator_func_2.py [decorator function, the same with 35]
 
 ###windows
   1. py2exe [i will use win32 edition]
