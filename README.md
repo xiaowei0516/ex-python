@@ -40,6 +40,7 @@ python example
   37. func_args.py [function parameter parse, use \*args]
   38. func_argv.py [function parameter parse, use \*\*argv ]
   39. func_args_argv.py [funciton parameter parse, use \*args \*\*argv]
+  40. decorate_time.py [ using decorate calc process execute time]
 
 ###windows
   1. py2exe [i will use win32 edition]
